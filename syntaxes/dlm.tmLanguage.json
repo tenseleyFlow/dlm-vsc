@@ -1,0 +1,73 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "DLM",
+  "scopeName": "text.dlm",
+  "patterns": [
+    { "include": "#frontmatter" },
+    { "include": "#body" }
+  ],
+  "repository": {
+    "frontmatter": {
+      "begin": "\\A(---)\\s*$",
+      "end": "^(---)\\s*$",
+      "beginCaptures": { "1": { "name": "punctuation.definition.frontmatter.begin.dlm" } },
+      "endCaptures": { "1": { "name": "punctuation.definition.frontmatter.end.dlm" } },
+      "name": "meta.frontmatter.dlm",
+      "contentName": "source.yaml",
+      "patterns": [
+        { "include": "#frontmatter-keys" },
+        { "include": "source.yaml" }
+      ]
+    },
+    "frontmatter-keys": {
+      "patterns": [
+        {
+          "match": "^\\s*(dlm_id|dlm_version|base_model)\\s*:",
+          "captures": { "1": { "name": "keyword.other.dlm.frontmatter-key" } }
+        },
+        {
+          "match": "^\\s*(training|export|system_prompt)\\s*:",
+          "captures": { "1": { "name": "entity.name.tag.dlm.frontmatter-block" } }
+        }
+      ]
+    },
+    "body": {
+      "patterns": [
+        { "include": "#section-fence-instruction" },
+        { "include": "#section-fence-preference" },
+        { "include": "#section-fence-media" },
+        { "include": "#dlm-metadata-comment" },
+        { "include": "#qa-headers" },
+        { "include": "#preference-headers" },
+        { "include": "text.html.markdown" }
+      ]
+    },
+    "section-fence-instruction": {
+      "match": "^(::instruction(?:#\\w+)?::)\\s*$",
+      "captures": { "1": { "name": "keyword.control.fence.instruction.dlm" } }
+    },
+    "section-fence-preference": {
+      "match": "^(::preference(?:#\\w+)?::)\\s*$",
+      "captures": { "1": { "name": "keyword.control.fence.preference.dlm" } }
+    },
+    "section-fence-media": {
+      "match": "^(::(image|audio)\\s+[^:]*::)\\s*$",
+      "captures": {
+        "1": { "name": "keyword.control.fence.media.dlm" },
+        "2": { "name": "entity.name.type.dlm.media-type" }
+      }
+    },
+    "dlm-metadata-comment": {
+      "match": "^(<!--\\s*dlm-auto-(?:harvest|mined|synth):.+-->)\\s*$",
+      "captures": { "1": { "name": "comment.block.dlm.metadata" } }
+    },
+    "qa-headers": {
+      "match": "^(###\\s+[QA])\\s*$",
+      "captures": { "1": { "name": "markup.heading.qa.dlm" } }
+    },
+    "preference-headers": {
+      "match": "^(###\\s+(?:Prompt|Chosen|Rejected))\\s*$",
+      "captures": { "1": { "name": "markup.heading.preference.dlm" } }
+    }
+  }
+}

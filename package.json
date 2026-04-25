@@ -1,0 +1,111 @@
+{
+  "name": "dlm-vsc",
+  "displayName": "DLM — Document Language Model",
+  "description": "First-class .dlm authoring: syntax highlighting, completions, diagnostics, and a side panel for quick section insertion, source directory management, and base model browsing.",
+  "version": "0.1.0",
+  "publisher": "tenseleyFlow",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tenseleyFlow/dlm-vsc"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning"
+  ],
+  "activationEvents": [
+    "onLanguage:dlm"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "dlm",
+        "aliases": ["DLM", "Document Language Model"],
+        "extensions": [".dlm"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "dlm",
+        "scopeName": "text.dlm",
+        "path": "./syntaxes/dlm.tmLanguage.json"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dlm-panel",
+          "title": "DLM",
+          "icon": "./icons/dlm-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "dlm-panel": [
+        {
+          "type": "webview",
+          "id": "dlm.sidePanel",
+          "name": "DLM Authoring"
+        }
+      ]
+    },
+    "commands": [
+      { "command": "dlm.train", "title": "DLM: Train Current Document" },
+      { "command": "dlm.export", "title": "DLM: Export" },
+      { "command": "dlm.synth", "title": "DLM: Synth Instructions" },
+      { "command": "dlm.showHistory", "title": "DLM: Show Run History" },
+      { "command": "dlm.openStore", "title": "DLM: Open Store Directory" },
+      { "command": "dlm.insertInstruction", "title": "DLM: Insert Instruction Section" },
+      { "command": "dlm.insertPreference", "title": "DLM: Insert Preference Section" }
+    ],
+    "configuration": {
+      "title": "DLM",
+      "properties": {
+        "dlm.home": {
+          "type": "string",
+          "default": "",
+          "description": "Override ~/.dlm store root"
+        },
+        "dlm.defaultBase": {
+          "type": "string",
+          "default": "",
+          "description": "Default base_model for new documents"
+        },
+        "dlm.watchOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto-retrain on save"
+        },
+        "dlm.lspPath": {
+          "type": "string",
+          "default": "dlm-lsp",
+          "description": "Path to dlm-lsp binary"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outdir=out --platform=node --external:vscode --format=cjs && esbuild src/panel/webview/index.ts --bundle --platform=browser --format=iife --outfile=out/panel.js",
+    "watch": "npm run build -- --watch",
+    "lint": "eslint src/",
+    "test": "echo 'TODO: wire vscode-test-electron'",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "esbuild": "^0.20.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.0"
+  }
+}
