@@ -145,7 +145,7 @@ function renderTrainingControls() {
   const container = document.getElementById("training-controls")!;
   container.innerHTML = "";
   const btn = document.createElement("button");
-  btn.textContent = "Train (watch mode)";
+  btn.textContent = "Train";
   btn.addEventListener("click", () => {
     vscode.postMessage({ type: "runTrain" });
   });

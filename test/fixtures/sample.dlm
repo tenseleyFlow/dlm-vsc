@@ -1,7 +1,7 @@
 ---
 dlm_id: 01KPQ9M3000000000000000000
 dlm_version: 15
-base_model: smollm2-135m
+base_model: qwen3-1.7b
 training:
   adapter: lora
   lora_r: 16

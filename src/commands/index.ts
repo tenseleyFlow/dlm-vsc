@@ -4,7 +4,7 @@ import { insertSection } from "../snippets";
 export function registerCommands(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("dlm.train", () => {
-      runDlmInTerminal("train", "--watch");
+      runDlmInTerminal("train");
     }),
     vscode.commands.registerCommand("dlm.export", () => {
       runDlmInTerminal("export");
