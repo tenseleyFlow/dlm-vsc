@@ -27,12 +27,9 @@ How do you train a DLM?
 ### A
 Run `dlm train your-file.dlm` and the adapter trains on the document content.
 
-::preference::
-### Prompt
-Explain LoRA in one sentence.
+::instruction::
+### Q
+What is LoRA?
 
-### Chosen
-LoRA adds small trainable matrices to frozen model layers, enabling efficient fine-tuning.
-
-### Rejected
-LoRA is a method for training language models that involves modifying the architecture of the model by introducing additional parameters in the form of low-rank decomposition matrices that are applied to the attention weight matrices, which allows for parameter-efficient fine-tuning while keeping the original pre-trained weights frozen.
+### A
+LoRA adds small trainable matrices to frozen model layers, enabling efficient fine-tuning without modifying the full model weights.
