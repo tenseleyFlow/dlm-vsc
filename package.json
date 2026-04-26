@@ -66,6 +66,11 @@
     "configuration": {
       "title": "DLM",
       "properties": {
+        "dlm.command": {
+          "type": "string",
+          "default": "uv run dlm",
+          "description": "Command to invoke dlm CLI (e.g. 'dlm', 'uv run dlm', 'python -m dlm')"
+        },
         "dlm.home": {
           "type": "string",
           "default": "",
