@@ -8,27 +8,24 @@ declare function acquireVsCodeApi(): {
 
 const vscode = acquireVsCodeApi();
 
-interface BaseModelEntry {
+interface BaseModelSpec {
   key: string;
-  hf_id: string;
   params: number;
   size_gb_fp16: number;
   context_length: number;
   modality: string;
   license_spdx: string;
-  requires_acceptance: boolean;
 }
 
-interface TemplateEntry {
-  name: string;
-  title: string;
-  domain_tags: string[];
-  recommended_base: string;
-  summary: string;
+interface DocumentState {
+  base_model?: string;
+  base_model_spec?: BaseModelSpec | null;
+  dlm_version?: number;
+  section_counts?: Record<string, number>;
+  error?: string;
 }
 
-let baseModels: BaseModelEntry[] = [];
-let templates: TemplateEntry[] = [];
+let currentState: DocumentState | null = null;
 
 // --- Quick Insert ---
 function renderQuickInsert() {
@@ -63,102 +60,81 @@ function renderSourceManager() {
   container.appendChild(btn);
 }
 
-// --- Base Models ---
-function renderBaseModels(filter: string = "") {
-  const container = document.getElementById("base-models")!;
+// --- Base Model Summary ---
+function renderBaseModelSummary() {
+  const container = document.getElementById("base-model-summary")!;
   container.innerHTML = "";
 
-  const search = document.createElement("input");
-  search.id = "search";
-  search.type = "text";
-  search.placeholder = "Search models...";
-  search.value = filter;
-  search.addEventListener("input", () => {
-    renderBaseModelCards(container, search.value);
+  if (currentState?.base_model) {
+    const card = document.createElement("div");
+    card.className = "summary-card";
+    const spec = currentState.base_model_spec;
+    if (spec) {
+      card.innerHTML = `
+        <div class="key">${spec.key}</div>
+        <div class="detail">
+          ${formatParams(spec.params)} &middot; ${spec.size_gb_fp16.toFixed(1)} GB &middot;
+          ctx ${spec.context_length}
+          ${spec.modality !== "text" ? ` &middot; <span class="badge">${spec.modality}</span>` : ""}
+        </div>
+        <div class="detail">${spec.license_spdx}</div>
+      `;
+    } else {
+      card.innerHTML = `<div class="key">${currentState.base_model}</div>
+        <div class="detail">Custom HF model</div>`;
+    }
+    container.appendChild(card);
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "detail";
+    empty.textContent = "No base model set";
+    container.appendChild(empty);
+  }
+
+  const btn = document.createElement("button");
+  btn.textContent = "Change Base Model...";
+  btn.className = "secondary";
+  btn.addEventListener("click", () => {
+    vscode.postMessage({ type: "pickBaseModel" });
   });
-  container.appendChild(search);
-
-  renderBaseModelCards(container, filter);
+  container.appendChild(btn);
 }
 
-function renderBaseModelCards(container: HTMLElement, filter: string) {
-  const existing = container.querySelectorAll(".model-card");
-  existing.forEach((el) => el.remove());
-
-  const lowerFilter = filter.toLowerCase();
-  const filtered = baseModels.filter(
-    (m) =>
-      m.key.toLowerCase().includes(lowerFilter) ||
-      m.modality.toLowerCase().includes(lowerFilter)
-  );
-
-  for (const m of filtered) {
-    const card = document.createElement("div");
-    card.className = "model-card";
-    card.innerHTML = `
-      <div class="key">${m.key}</div>
-      <div class="detail">
-        ${formatParams(m.params)} &middot; ${m.size_gb_fp16.toFixed(1)} GB &middot;
-        ctx ${m.context_length}
-        ${m.modality !== "text" ? ` &middot; <span class="badge">${m.modality}</span>` : ""}
-      </div>
-      <div class="detail">${m.license_spdx}${m.requires_acceptance ? " (gated)" : ""}</div>
-    `;
-    card.addEventListener("click", () => {
-      vscode.postMessage({ type: "setBaseModel", key: m.key });
-    });
-    container.appendChild(card);
-  }
-}
-
-// --- Templates ---
-function renderTemplates() {
-  const container = document.getElementById("templates")!;
+// --- Template Actions ---
+function renderTemplateActions() {
+  const container = document.getElementById("template-actions")!;
   container.innerHTML = "";
-  for (const t of templates) {
-    const card = document.createElement("div");
-    card.className = "model-card";
-    card.innerHTML = `
-      <div class="key">${t.title}</div>
-      <div class="detail">${t.summary}</div>
-      <div class="detail">
-        ${t.domain_tags.map((tag) => `<span class="badge">${tag}</span>`).join(" ")}
-      </div>
-    `;
-    card.addEventListener("click", () => {
-      vscode.postMessage({ type: "useTemplate", templateName: t.name });
-    });
-    container.appendChild(card);
-  }
+  const btn = document.createElement("button");
+  btn.textContent = "New from Template...";
+  btn.className = "secondary";
+  btn.addEventListener("click", () => {
+    vscode.postMessage({ type: "pickTemplate" });
+  });
+  container.appendChild(btn);
 }
 
 // --- Document Overview ---
-function renderOverview(data: Record<string, unknown> | null) {
+function renderOverview() {
   const container = document.getElementById("overview")!;
-  if (!data || data.error) {
-    container.innerHTML = data?.error
+  if (!currentState || currentState.error) {
+    container.innerHTML = currentState?.error
       ? `<div style="color:var(--vscode-errorForeground)">Parse error</div>`
       : "";
     return;
   }
-  const counts = (data.section_counts as Record<string, number>) || {};
-  const spec = data.base_model_spec as BaseModelEntry | null;
+  const counts = currentState.section_counts || {};
   container.innerHTML = `
     <h2>Document</h2>
     <div class="overview-row">
-      <span class="overview-label">Base model</span>
-      <span>${data.base_model || "—"}${spec ? ` (${formatParams(spec.params)})` : ""}</span>
+      <span class="overview-label">Schema</span>
+      <span>v${currentState.dlm_version || "?"}</span>
     </div>
     <div class="overview-row">
-      <span class="overview-label">Schema</span>
-      <span>v${data.dlm_version || "?"}</span>
-    </div>
-    <div id="section-counts" class="overview-row">
       <span class="overview-label">Sections</span>
       <span>
         ${Object.entries(counts)
           .map(([k, v]) => `${k}: ${v}`)
-          .join(" · ")}
+          .join(" &middot; ")}
       </span>
     </div>
   `;
@@ -178,7 +154,8 @@ function renderTrainingControls() {
 
 // --- Helpers ---
 function formatParams(params: number): string {
-  if (params >= 1_000_000_000) return `${(params / 1_000_000_000).toFixed(1)}B`;
+  if (params >= 1_000_000_000)
+    return `${(params / 1_000_000_000).toFixed(1)}B`;
   if (params >= 1_000_000) return `${Math.round(params / 1_000_000)}M`;
   return `${Math.round(params / 1_000)}K`;
 }
@@ -187,16 +164,10 @@ function formatParams(params: number): string {
 window.addEventListener("message", (event) => {
   const msg = event.data;
   switch (msg.type) {
-    case "baseModels":
-      baseModels = msg.data || [];
-      renderBaseModels();
-      break;
-    case "templates":
-      templates = msg.data || [];
-      renderTemplates();
-      break;
     case "documentState":
-      renderOverview(msg.data);
+      currentState = msg.data;
+      renderOverview();
+      renderBaseModelSummary();
       break;
   }
 });
@@ -204,7 +175,7 @@ window.addEventListener("message", (event) => {
 // --- Init ---
 renderQuickInsert();
 renderSourceManager();
-renderBaseModels();
-renderTemplates();
+renderBaseModelSummary();
+renderTemplateActions();
 renderTrainingControls();
-renderOverview(null);
+renderOverview();

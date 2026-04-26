@@ -2,10 +2,12 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { insertSection } from "../snippets";
 import type { LanguageClient } from "vscode-languageclient/node";
-import type { WebviewMessage } from "./messages";
+import type { BaseModelEntry, TemplateEntry, WebviewMessage } from "./messages";
 
 export class DlmPanelProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
+  private _baseModels: BaseModelEntry[] = [];
+  private _templates: TemplateEntry[] = [];
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -30,7 +32,8 @@ export class DlmPanelProvider implements vscode.WebviewViewProvider {
       this._handleMessage(msg);
     });
 
-    this._pushInitialData();
+    this._fetchRegistryData();
+    this._pushDocumentState();
   }
 
   private async _handleMessage(msg: WebviewMessage) {
@@ -43,14 +46,12 @@ export class DlmPanelProvider implements vscode.WebviewViewProvider {
         await this._addSourceDirectory();
         break;
 
-      case "setBaseModel":
-        await this._setBaseModel(msg.key);
+      case "pickBaseModel":
+        await this._showBaseModelPicker();
         break;
 
-      case "useTemplate":
-        vscode.window.showInformationMessage(
-          `Template '${msg.templateName}' selected. Use 'dlm init --template ${msg.templateName}' to create a new .dlm file.`
-        );
+      case "pickTemplate":
+        await this._showTemplatePicker();
         break;
 
       case "runTrain":
@@ -58,13 +59,81 @@ export class DlmPanelProvider implements vscode.WebviewViewProvider {
         break;
 
       case "stopTrain":
-        vscode.window.showInformationMessage("Use Ctrl+C in the terminal to stop training.");
+        vscode.window.showInformationMessage(
+          "Use Ctrl+C in the terminal to stop training."
+        );
         break;
 
       case "requestState":
-        this._pushInitialData();
+        this._pushDocumentState();
         break;
     }
+  }
+
+  private async _showBaseModelPicker() {
+    if (this._baseModels.length === 0) {
+      await this._fetchRegistryData();
+    }
+
+    const items: vscode.QuickPickItem[] = this._baseModels.map((m) => ({
+      label: m.key,
+      description: `${formatParams(m.params)} · ${m.size_gb_fp16.toFixed(1)} GB · ctx ${m.context_length}`,
+      detail: `${m.hf_id} · ${m.license_spdx}${m.requires_acceptance ? " (gated)" : ""}${m.modality !== "text" ? ` · ${m.modality}` : ""}`,
+    }));
+
+    const picked = await vscode.window.showQuickPick(items, {
+      placeHolder: "Select a base model",
+      matchOnDescription: true,
+      matchOnDetail: true,
+    });
+
+    if (!picked) return;
+
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.document.languageId !== "dlm") return;
+
+    await this._client.sendRequest("workspace/executeCommand", {
+      command: "dlm.setBaseModel",
+      arguments: [editor.document.uri.toString(), picked.label],
+    });
+
+    this._pushDocumentState();
+  }
+
+  private async _showTemplatePicker() {
+    if (this._templates.length === 0) {
+      await this._fetchRegistryData();
+    }
+
+    const items: vscode.QuickPickItem[] = this._templates.map((t) => ({
+      label: t.title,
+      description: t.domain_tags.join(", "),
+      detail: t.summary,
+    }));
+
+    const picked = await vscode.window.showQuickPick(items, {
+      placeHolder: "Select a starter template",
+      matchOnDescription: true,
+      matchOnDetail: true,
+    });
+
+    if (!picked) return;
+
+    const template = this._templates.find((t) => t.title === picked.label);
+    if (!template) return;
+
+    const saveUri = await vscode.window.showSaveDialog({
+      filters: { "DLM Document": ["dlm"] },
+      saveLabel: "Create .dlm",
+    });
+
+    if (!saveUri) return;
+
+    const terminal = vscode.window.createTerminal("dlm init");
+    terminal.sendText(
+      `dlm init ${saveUri.fsPath} --template ${template.name}`
+    );
+    terminal.show();
   }
 
   private async _addSourceDirectory() {
@@ -89,7 +158,7 @@ export class DlmPanelProvider implements vscode.WebviewViewProvider {
 
     if (relativePath.startsWith("../..")) {
       const proceed = await vscode.window.showWarningMessage(
-        `This path is outside the .dlm's directory tree. Under sources_policy: strict, it would be rejected at train time.`,
+        "This path is outside the .dlm's directory tree. Under sources_policy: strict, it would be rejected at train time.",
         "Insert anyway",
         "Cancel"
       );
@@ -102,50 +171,45 @@ export class DlmPanelProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  private async _setBaseModel(key: string) {
+  private async _fetchRegistryData() {
+    try {
+      const models = (await this._client.sendRequest(
+        "workspace/executeCommand",
+        { command: "dlm/listBaseModels", arguments: [] }
+      )) as BaseModelEntry[] | null;
+      if (models) this._baseModels = models;
+    } catch {
+      /* LSP not ready */
+    }
+
+    try {
+      const templates = (await this._client.sendRequest(
+        "workspace/executeCommand",
+        { command: "dlm/listTemplates", arguments: [] }
+      )) as TemplateEntry[] | null;
+      if (templates) this._templates = templates;
+    } catch {
+      /* LSP not ready */
+    }
+  }
+
+  private async _pushDocumentState() {
+    if (!this._view) return;
+
     const editor = vscode.window.activeTextEditor;
     if (!editor || editor.document.languageId !== "dlm") return;
 
-    await this._client.sendRequest("workspace/executeCommand", {
-      command: "dlm.setBaseModel",
-      arguments: [editor.document.uri.toString(), key],
-    });
-  }
-
-  private async _pushInitialData() {
-    if (!this._view) return;
-
     try {
-      const models = await this._client.sendRequest("workspace/executeCommand", {
-        command: "dlm/listBaseModels",
-        arguments: [],
-      });
-      this._view.webview.postMessage({ type: "baseModels", data: models });
-    } catch {
-      /* LSP not ready yet */
-    }
-
-    try {
-      const templates = await this._client.sendRequest("workspace/executeCommand", {
-        command: "dlm/listTemplates",
-        arguments: [],
-      });
-      this._view.webview.postMessage({ type: "templates", data: templates });
-    } catch {
-      /* LSP not ready yet */
-    }
-
-    const editor = vscode.window.activeTextEditor;
-    if (editor && editor.document.languageId === "dlm") {
-      try {
-        const state = await this._client.sendRequest("workspace/executeCommand", {
+      const state = await this._client.sendRequest(
+        "workspace/executeCommand",
+        {
           command: "dlm/documentState",
           arguments: [editor.document.uri.toString()],
-        });
-        this._view.webview.postMessage({ type: "documentState", data: state });
-      } catch {
-        /* LSP not ready yet */
-      }
+        }
+      );
+      this._view.webview.postMessage({ type: "documentState", data: state });
+    } catch {
+      /* LSP not ready */
     }
   }
 
@@ -201,20 +265,6 @@ export class DlmPanelProvider implements vscode.WebviewViewProvider {
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
     }
-    .model-card {
-      padding: 6px 8px;
-      margin: 3px 0;
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-widget-border);
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 11px;
-    }
-    .model-card:hover {
-      border-color: var(--vscode-focusBorder);
-    }
-    .model-card .key { font-weight: 600; }
-    .model-card .detail { color: var(--vscode-descriptionForeground); }
     .badge {
       display: inline-block;
       padding: 1px 5px;
@@ -223,17 +273,6 @@ export class DlmPanelProvider implements vscode.WebviewViewProvider {
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
     }
-    #search {
-      width: 100%;
-      padding: 4px 8px;
-      margin: 4px 0;
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border);
-      border-radius: 3px;
-      font-size: 12px;
-      box-sizing: border-box;
-    }
     .overview-row {
       display: flex;
       justify-content: space-between;
@@ -241,11 +280,16 @@ export class DlmPanelProvider implements vscode.WebviewViewProvider {
       font-size: 12px;
     }
     .overview-label { color: var(--vscode-descriptionForeground); }
-    #section-counts .bar {
-      display: inline-block;
-      height: 10px;
-      border-radius: 2px;
+    .summary-card {
+      padding: 6px 8px;
+      margin: 3px 0;
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-widget-border);
+      border-radius: 3px;
+      font-size: 11px;
     }
+    .summary-card .key { font-weight: 600; }
+    .summary-card .detail { color: var(--vscode-descriptionForeground); }
   </style>
 </head>
 <body>
@@ -254,10 +298,10 @@ export class DlmPanelProvider implements vscode.WebviewViewProvider {
   <div id="quick-insert"></div>
   <h2>Source Directories</h2>
   <div id="source-manager"></div>
-  <h2>Base Models</h2>
-  <div id="base-models"></div>
+  <h2>Base Model</h2>
+  <div id="base-model-summary"></div>
   <h2>Templates</h2>
-  <div id="templates"></div>
+  <div id="template-actions"></div>
   <h2>Training</h2>
   <div id="training-controls"></div>
   <script nonce="${nonce}" src="${scriptUri}"></script>
@@ -267,10 +311,18 @@ export class DlmPanelProvider implements vscode.WebviewViewProvider {
 }
 
 function getNonce(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
   for (let i = 0; i < 32; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
+}
+
+function formatParams(params: number): string {
+  if (params >= 1_000_000_000)
+    return `${(params / 1_000_000_000).toFixed(1)}B`;
+  if (params >= 1_000_000) return `${Math.round(params / 1_000_000)}M`;
+  return `${Math.round(params / 1_000)}K`;
 }

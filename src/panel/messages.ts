@@ -3,8 +3,8 @@
 export type WebviewMessage =
   | { type: "quickInsert"; sectionType: "instruction" | "preference" | "image" | "audio" }
   | { type: "addSource" }
-  | { type: "setBaseModel"; key: string }
-  | { type: "useTemplate"; templateName: string }
+  | { type: "pickBaseModel" }
+  | { type: "pickTemplate" }
   | { type: "runTrain" }
   | { type: "stopTrain" }
   | { type: "requestState" };
@@ -41,6 +41,4 @@ export interface DocumentStatePayload {
 
 export type ExtensionMessage =
   | { type: "documentState"; data: DocumentStatePayload }
-  | { type: "baseModels"; data: BaseModelEntry[] }
-  | { type: "templates"; data: TemplateEntry[] }
   | { type: "trainingProgress"; data: { step: number; total_steps: number; loss?: number } };
