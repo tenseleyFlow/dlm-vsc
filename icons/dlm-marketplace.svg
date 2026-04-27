@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f1f5f9"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="256" height="256" rx="48" ry="48" fill="url(#bg)"/>
+
+  <g transform="translate(64 44)">
+    <path d="M0 6 Q0 0 6 0 L96 0 L128 32 L128 162 Q128 168 122 168 L6 168 Q0 168 0 162 Z"
+          fill="url(#paper)"/>
+    <path d="M96 0 L128 32 L100 32 Q96 32 96 28 Z" fill="#cbd5e1"/>
+
+    <rect x="20" y="50" width="88" height="6" rx="3" fill="#6366f1" opacity="0.85"/>
+    <rect x="20" y="64" width="60" height="6" rx="3" fill="#a78bfa" opacity="0.7"/>
+    <rect x="20" y="78" width="74" height="6" rx="3" fill="#a78bfa" opacity="0.55"/>
+
+    <text x="64" y="138" text-anchor="middle"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+          font-size="34" font-weight="800" fill="#1e1b4b" letter-spacing="2">DLM</text>
+  </g>
+</svg>
