@@ -41,7 +41,7 @@ const path = __importStar(require("path"));
 const mocha_1 = __importDefault(require("mocha"));
 const glob_1 = require("glob");
 async function run() {
-    const mocha = new mocha_1.default({ ui: "bdd", timeout: 30_000 });
+    const mocha = new mocha_1.default({ ui: "tdd", timeout: 30_000 });
     const testsRoot = path.resolve(__dirname);
     const files = await (0, glob_1.glob)("**/*.test.js", { cwd: testsRoot });
     for (const f of files) {
