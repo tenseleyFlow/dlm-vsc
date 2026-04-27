@@ -12,7 +12,6 @@ export async function activate(context: vscode.ExtensionContext) {
   const lspPath = config.get<string>("lspPath", "dlm-lsp");
 
   client = createLspClient(lspPath);
-  await client.start();
 
   const panelProvider = new DlmPanelProvider(context.extensionUri, client);
   context.subscriptions.push(
@@ -22,6 +21,15 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   registerCommands(context);
+
+  try {
+    await client.start();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    vscode.window.showWarningMessage(
+      `DLM language server failed to start (${msg}). Install with: pip install dlm-lsp`
+    );
+  }
 }
 
 export async function deactivate() {
