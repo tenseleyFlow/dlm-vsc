@@ -24,8 +24,13 @@
     "languages": [
       {
         "id": "dlm",
-        "aliases": ["DLM", "Document Language Model"],
-        "extensions": [".dlm"],
+        "aliases": [
+          "DLM",
+          "Document Language Model"
+        ],
+        "extensions": [
+          ".dlm"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -55,13 +60,34 @@
       ]
     },
     "commands": [
-      { "command": "dlm.train", "title": "DLM: Train Current Document" },
-      { "command": "dlm.export", "title": "DLM: Export" },
-      { "command": "dlm.synth", "title": "DLM: Synth Instructions" },
-      { "command": "dlm.showHistory", "title": "DLM: Show Run History" },
-      { "command": "dlm.openStore", "title": "DLM: Open Store Directory" },
-      { "command": "dlm.insertInstruction", "title": "DLM: Insert Instruction Section" },
-      { "command": "dlm.insertPreference", "title": "DLM: Insert Preference Section" }
+      {
+        "command": "dlm.train",
+        "title": "DLM: Train Current Document"
+      },
+      {
+        "command": "dlm.export",
+        "title": "DLM: Export"
+      },
+      {
+        "command": "dlm.synth",
+        "title": "DLM: Synth Instructions"
+      },
+      {
+        "command": "dlm.showHistory",
+        "title": "DLM: Show Run History"
+      },
+      {
+        "command": "dlm.openStore",
+        "title": "DLM: Open Store Directory"
+      },
+      {
+        "command": "dlm.insertInstruction",
+        "title": "DLM: Insert Instruction Section"
+      },
+      {
+        "command": "dlm.insertPreference",
+        "title": "DLM: Insert Preference Section"
+      }
     ],
     "configuration": {
       "title": "DLM",
@@ -98,16 +124,22 @@
     "build": "esbuild src/extension.ts --bundle --outdir=out --platform=node --external:vscode --format=cjs && esbuild src/panel/webview/index.ts --bundle --platform=browser --format=iife --outfile=out/panel.js",
     "watch": "npm run build -- --watch",
     "lint": "eslint src/",
-    "test": "echo 'TODO: wire vscode-test-electron'",
+    "pretest": "tsc -p test/tsconfig.json",
+    "test": "node out-test/runTest.js",
     "package": "vsce package"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/test-electron": "^2.5.2",
     "esbuild": "^0.20.0",
     "eslint": "^8.0.0",
+    "glob": "^13.0.6",
+    "mocha": "^11.7.5",
     "typescript": "^5.4.0"
   },
   "dependencies": {
