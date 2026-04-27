@@ -5,6 +5,7 @@ node_modules/**
 .github/**
 .vscode/**
 .docs/**
+media/SCREENSHOTS.md
 .gitignore
 tsconfig.json
 test/tsconfig.json
